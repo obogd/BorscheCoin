@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Поймай борщевик!</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Arial', sans-serif;
+      background-color: #e8f5e9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    #game-container {
+      text-align: center;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    h1 {
+      color: #2e7d32;
+      margin-bottom: 5px;
+    }
+
+    p {
+      font-size: 1.2em;
+      color: #555;
+    }
+
+    #game-area {
+      width: 100%;
+      height: 400px;
+      border: 3px solid #c62828;
+      border-radius: 10px;
+      position: relative;
+      background-image: url('https://mir-s3-cdn-cf.behance.net/project_modules/fs/87b6d3177098849.64d0c6be985d7.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      overflow: hidden;
+      margin-top: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+    #game-area::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(180deg, transparent 70%, rgba(189, 195, 106, 0.4) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .borshchewik {
+      width: 60px;
+      height: 60px;
+      position: absolute;
+      cursor: pointer;
+      animation: pop-in 0.4s ease-out;
+      user-select: none;
+      z-index: 1;
+    }
+
+    .borshchewik img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    }
+
+    @keyframes pop-in {
+      0% { transform: scale(0.3); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Экран победы */
+    .victory-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+      z-index: 10;
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .victory-overlay p {
+      color: #a5d6a7;
+      font-size: 1.3em;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <h1>⚠️ Поймай борщевик!</h1>
+    <p>Уничтожено: <span id="score">0</span></p>
+    <div id="game-area"></div>
+  </div>
+
+  <script>
+    const gameArea = document.getElementById("game-area");
+    const scoreElement = document.getElementById("score");
+    let score = 0;
+    let spawnInterval = 1200; // Начальный интервал (мс)
+    let gameActive = true;
+
+    const borshchewikImgSrc = "https://avatars.mds.yandex.net/get-shedevrum/12154803/957de8b9cbee11ee86517a83974e0feb/orig";
+
+    // Функция для создания одного борщевика
+    function createBorshchewik() {
+      if (!gameActive) return;
+
+      const weed = document.createElement("div");
+      weed.classList.add("borshchewik");
+
+      const maxX = gameArea.offsetWidth - 60;
+      const maxY = gameArea.offsetHeight - 60;
+      const randomX = Math.random() * maxX;
+      const randomY = Math.random() * maxY;
+
+      weed.style.left = `${randomX}px`;
+      weed.style.top = `${randomY}px`;
+
+      const img = document.createElement("img");
+      img.src = borshchewikImgSrc;
+      img.alt = "Борщевик Сосновского";
+
+      img.onerror = function () {
+        weed.innerHTML = "⚠️ Борщевик";
+        weed.style.color = "#b71c1c";
+        weed.style.fontSize = "14px";
+        weed.style.fontWeight = "bold";
+        weed.style.display = "flex";
+        weed.style.flexDirection = "column";
+        weed.style.alignItems = "center";
+        weed.style.justifyContent = "center";
+        weed.style.textShadow = "1px 1px 2px white";
+        weed.style.backgroundColor = "rgba(255,255,255,0.7)";
+        weed.style.borderRadius = "8px";
+        weed.style.padding = "5px";
+      };
+
+      weed.appendChild(img);
+
+      weed.addEventListener("click", () => {
+        if (!gameActive) return;
+        score++;
+        scoreElement.textContent = score;
+        weed.remove();
+        playDestroySound();
+
+        // Проверка победы
+        if (score >= 20) {
+          endGameWithVictory();
+        }
+      });
+
+      gameArea.appendChild(weed);
+
+      // Удаление, если не поймали
+      setTimeout(() => {
+        if (weed.parentElement) {
+          weed.remove();
+        }
+      }, 3000);
+    }
+
+    // Функция массового появления: 1–3 борщевика за раз
+    function spawnMultipleWeeds() {
+      if (!gameActive) return;
+      const count = Math.floor(Math.random() * 3) + 1; // 1, 2 или 3
+      for (let i = 0; i < count; i++) {
+        setTimeout(createBorshchewik, i * 200); // с небольшой задержкой
+      }
+    }
+
+    // Завершение игры — победа
+    function endGameWithVictory() {
+      gameActive = false;
+      clearInterval(spawnTimer);
+
+      const victory = document.createElement("div");
+      victory.classList.add("victory-overlay");
+      victory.innerHTML = `
+        <h2>🎉 Победа!</h2>
+        <p>Вы уничтожили весь борщевик на своём участке и можете не платить штраф!</p>
+      `;
+      gameArea.appendChild(victory);
+    }
+
+    // Звук уничтожения
+    function playDestroySound() {
+      const audio = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3");
+      audio.volume = 0.3;
+      audio.play().catch(e => console.log("Звук не воспроизведён"));
+    }
+
+    // Старт: появление борщевиков каждые 1.2 секунды (и будет ускоряться)
+    let spawnTimer = setInterval(spawnMultipleWeeds, spawnInterval);
+
+    // Ускорение каждые 5 убитых
+    const speedUp = setInterval(() => {
+      if (score >= 20) {
+        clearInterval(speedUp);
+        return;
+      }
+      if (spawnInterval > 600) {
+        spawnInterval -= 100;
+        clearInterval(spawnTimer);
+        spawnTimer = setInterval(spawnMultipleWeeds, spawnInterval);
+      }
+    }, 2500);
+
+    // Первые борщевики
+    spawnMultipleWeeds();
+  </script>
+</body>
+</html>
